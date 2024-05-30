@@ -1,64 +1,72 @@
 pipeline {
-                    environment {
-                        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-                        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                    }
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+    }
 
-                    agent any
+    agent any
 
-                    stages {
-                        stage('Clean Workspace') {
-                            steps {
-                                echo "Cleaning workspace..."
-                                cleanWs()
-                                echo "Workspace cleaned."
-                            }
-                        }
+    parameters {
+        string(name: 'action', defaultValue: 'plan', description: 'Action to perform: plan, apply, or destroy')
+    }
 
-                        stage('Checkout') {
-                            steps {
-                                echo "Checking out the repository..."
-                                script {
-                                    dir("terraform") {
-                                        git branch: 'Dev', credentialsId: 'palash-git', url: 'https://github.com/palash80/employee_api.git'
-                                        
-                                    }
-                                }
-                                echo "Repository checked out."
-                            }
-                        }
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                echo "Cleaning workspace..."
+                cleanWs()
+                echo "Workspace cleaned."
+            }
+        }
 
-                        stage('Terraform Init') {
-                            steps {
-                                echo "Initializing Terraform..."
-                                sh 'pwd; cd ${WORKSPACE}/terraform/Jenkinsfile; terraform init'
-                                echo "Terraform initialization complete."
-                            }
-                        }
+        stage('Checkout') {
+            steps {
+                echo "Checking out the repository..."
+                script {
+                    git branch: 'main', credentialsId: 'palash-git', url: 'https://github.com/palash80/employee_api.git'
+                }
+                echo "Repository checked out."
+            }
+        }
 
-                        stage('Terraform Action') {
-                            steps {
-                                echo "Terraform action is -> ${action}"
+        stage('Terraform Init') {
+            steps {
+                echo "Initializing Terraform..."
+                sh 'pwd; terraform init'
+                echo "Terraform initialization complete."
+            }
+        }
 
-                                script {
-                                    // Check the value of ${action} and execute the appropriate Terraform command
-                                    if (action == 'plan') {
-                                        echo "Running terraform plan..."
-                                        sh "cd ${WORKSPACE}/terraform/Jenkinsfile && terraform plan -out tfplan"
-                                        echo "Terraform plan completed."
-                                    } else if (action == 'apply') {
-                                        echo "Running terraform apply..."
-                                        sh "cd ${WORKSPACE}/terraform/Jenkinsfile && terraform apply -auto-approve"
-                                        echo "Terraform apply completed."
-                                    } else if (action == 'destroy') {
-                                        echo "Running terraform destroy..."
-                                        sh "cd ${WORKSPACE}/terraform/Jenkinsfile && terraform destroy -auto-approve"
-                                        echo "Terraform destroy completed."
-                                    } else {
-                                        error "Invalid action: ${action}. Supported actions are 'plan', 'apply', and 'destroy'."
-                                    }
-                                }
-                            }
-                        }
+        stage('Terraform Action') {
+            steps {
+                echo "Terraform action is -> ${params.action}"
+
+                script {
+                    if (params.action == 'plan') {
+                        echo "Running terraform plan..."
+                        sh 'terraform plan -out tfplan'
+                        echo "Terraform plan completed."
+                    } else if (params.action == 'apply') {
+                        echo "Running terraform apply..."
+                        sh 'terraform apply -auto-approve'
+                        echo "Terraform apply completed."
+                    } else if (params.action == 'destroy') {
+                        echo "Running terraform destroy..."
+                        sh 'terraform destroy -auto-approve'
+                        echo "Terraform destroy completed."
+                    } else {
+                        error "Invalid action: ${params.action}. Supported actions are 'plan', 'apply', and 'destroy'."
                     }
                 }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+            echo 'Workspace cleanup complete.'
+        }
+    }
+}
