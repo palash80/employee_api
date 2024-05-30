@@ -20,7 +20,7 @@ pipeline {
                                 echo "Checking out the repository..."
                                 script {
                                     dir("terraform") {
-                                        git branch: 'Dev', credentialsId: 'nida-git', url: ''
+                                        git branch: 'Dev', credentialsId: 'palash-git', url: ''
                                         sh 'chmod +x Dev_Infrastructure/tf_static/python'
                                     }
                                 }
